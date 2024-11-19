@@ -55,28 +55,44 @@ namespace Fixer_Web.Controllers
         {
             try
             {
-                _logger.LogInformation($"Vote data received: {JsonConvert.SerializeObject(vote)}");
+                // Önce aynı problem tanımı için mevcut kaydı kontrol et
+                var existingProblem = await _unitOfWork.Problems
+                    .GetFirstOrDefaultAsync(p => 
+                        p.Description.ToLower() == vote.ProblemDescription.ToLower() &&
+                        p.Category == vote.Category &&
+                        p.OperatingSystem == vote.OperatingSystem);
 
-                if (vote == null)
+                Problem problem;
+                if (existingProblem != null)
                 {
-                    _logger.LogError("Vote DTO is null after deserialization");
-                    return Json(new { success = false, message = "Geçersiz istek: Vote verisi okunamadı" });
+                    _logger.LogInformation($"Using existing problem with ID: {existingProblem.Id}");
+                    problem = existingProblem;
+                }
+                else
+                {
+                    problem = new Problem
+                    {
+                        Description = vote.ProblemDescription,
+                        Category = vote.Category ?? "Genel",
+                        OperatingSystem = vote.OperatingSystem ?? "Diğer",
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await _unitOfWork.Problems.AddAsync(problem);
+                    await _unitOfWork.SaveChangesAsync();
+                    _logger.LogInformation($"Created new problem with ID: {problem.Id}");
                 }
 
-                // Önce aynı çözüm metni ile daha önce kaydedilmiş bir solution var mı kontrol et
+                // Aynı çözüm metni için mevcut solution'ı kontrol et
                 var existingSolution = await _unitOfWork.Solutions
                     .GetFirstOrDefaultAsync(s => 
                         s.SolutionText == vote.SolutionText && 
-                        s.Category == vote.Category &&
-                        s.OperatingSystem == vote.OperatingSystem);
+                        s.ProblemId == problem.Id);
 
                 Solution solution;
-
                 if (existingSolution != null)
                 {
                     // Var olan solution'ı güncelle
-                    _logger.LogInformation($"Updating existing solution with ID: {existingSolution.Id}");
-                    
                     existingSolution.LastUsedAt = DateTime.UtcNow;
                     existingSolution.TotalUsageCount++;
                     
@@ -90,27 +106,12 @@ namespace Fixer_Web.Controllers
                 }
                 else
                 {
-                    // Önce Problem kaydı oluştur
-                    var problem = new Problem
-                    {
-                        Description = vote.ProblemDescription,
-                        Category = vote.Category ?? "Genel",
-                        OperatingSystem = vote.OperatingSystem ?? "Diğer",
-                        CreatedAt = DateTime.UtcNow
-                    };
-
-                    await _unitOfWork.Problems.AddAsync(problem);
-                    await _unitOfWork.SaveChangesAsync();
-
-                    _logger.LogInformation($"Created problem with ID: {problem.Id}");
-
-                    // Problem'den referans alarak Solution kaydı oluştur
                     solution = new Solution
                     {
                         ProblemId = problem.Id,
-                        ProblemDescription = problem.Description,  // Problem'den al
-                        Category = problem.Category,              // Problem'den al
-                        OperatingSystem = problem.OperatingSystem, // Problem'den al
+                        ProblemDescription = problem.Description,
+                        Category = problem.Category,
+                        OperatingSystem = problem.OperatingSystem,
                         SolutionText = vote.SolutionText,
                         SuccessCount = vote.IsUpvote ? 1 : 0,
                         TotalUsageCount = 1,
@@ -177,6 +178,40 @@ namespace Fixer_Web.Controllers
             {
                 _logger.LogError(ex, $"Error getting vote counts for solution {solutionId}");
                 return (0, 0);
+            }
+        }
+
+        // AI'ın başarılı çözümleri önceliklendirmesi için yeni metod
+        [HttpGet]
+        public async Task<IActionResult> GetSuccessfulSolutions(string category, string operatingSystem, int top = 5)
+        {
+            try
+            {
+                var query = await _unitOfWork.Solutions.GetQueryable();
+                
+                var successfulSolutions = await query
+                    .Where(s => 
+                        s.Category == category && 
+                        s.OperatingSystem == operatingSystem && 
+                        s.SuccessCount > 0)
+                    .OrderByDescending(s => s.SuccessCount)
+                    .Take(top)
+                    .ToListAsync();
+
+                return Json(new { 
+                    success = true, 
+                    solutions = successfulSolutions.Select(s => new {
+                        problemDescription = s.ProblemDescription,
+                        solutionText = s.SolutionText,
+                        successRate = (double)s.SuccessCount / s.TotalUsageCount,
+                        totalUses = s.TotalUsageCount
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting successful solutions");
+                return Json(new { success = false, message = ex.Message });
             }
         }
     }
