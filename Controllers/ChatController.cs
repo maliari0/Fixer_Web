@@ -11,6 +11,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
+using System.Text.RegularExpressions;
 
 namespace Fixer_Web.Controllers
 {
@@ -55,6 +56,9 @@ namespace Fixer_Web.Controllers
         {
             try
             {
+                // Çözüm metnini temizle
+                vote.SolutionText = RemoveLeadingNumber(vote.SolutionText);
+
                 // Önce aynı problem tanımı için mevcut kaydı kontrol et
                 var existingProblem = await _unitOfWork.Problems
                     .GetFirstOrDefaultAsync(p => 
@@ -156,29 +160,13 @@ namespace Fixer_Web.Controllers
 
         private async Task<(int upvotes, int downvotes)> GetVoteCountsAsync(int solutionId)
         {
-            try
-            {
-                var votes = await _unitOfWork.Votes.FindListAsync(v => v.SolutionId == solutionId);
-                
-                if (votes == null)
-                {
-                    _logger.LogWarning($"No votes found for solution {solutionId}");
-                    return (0, 0);
-                }
+            var votes = await _unitOfWork.Votes
+                .FindListAsync(v => v.SolutionId == solutionId);
 
-                var votesList = votes.ToList();
-                var upvotes = votesList.Count(v => v.IsUpvote);
-                var downvotes = votesList.Count(v => !v.IsUpvote);
-
-                _logger.LogInformation($"Vote counts for solution {solutionId}: Upvotes={upvotes}, Downvotes={downvotes}");
-                
-                return (upvotes, downvotes);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error getting vote counts for solution {solutionId}");
-                return (0, 0);
-            }
+            return (
+                upvotes: votes.Count(v => v.IsUpvote),
+                downvotes: votes.Count(v => !v.IsUpvote)
+            );
         }
 
         // AI'ın başarılı çözümleri önceliklendirmesi için yeni metod
@@ -213,6 +201,12 @@ namespace Fixer_Web.Controllers
                 _logger.LogError(ex, "Error getting successful solutions");
                 return Json(new { success = false, message = ex.Message });
             }
+        }
+
+        private string RemoveLeadingNumber(string text)
+        {
+            var pattern = @"^\d+\.\s*";
+            return Regex.Replace(text.Trim(), pattern, "");
         }
     }
 }
