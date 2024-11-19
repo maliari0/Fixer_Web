@@ -2,212 +2,116 @@
     ViewData["Title"] = "Bilgisayar Destek Asistanı";
 }
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Bilgisayar Destek Asistanı</h5>
-                </div>
-                <div class="card-body">
-                    <div id="chat-messages" class="mb-3" style="height: 400px; overflow-y: auto;">
-                        <div class="system-message">
-                            Merhaba! Ben sizin bilgisayar destek asistanınızım. Size nasıl yardımcı olabilirim?
-                        </div>
-                    </div>
-                    <div class="chat-input-area">
-                        <div class="input-group">
-                            <select id="category" class="form-select" style="max-width: 150px;">
-                                <option value="Hardware">Donanım</option>
-                                <option value="Software">Yazılım</option>
-                                <option value="Network">Ağ</option>
-                                <option value="Other">Diğer</option>
-                            </select>
-                            <select id="os" class="form-select" style="max-width: 150px;">
-                                <option value="Windows">Windows</option>
-                                <option value="MacOS">MacOS</option>
-                                <option value="Linux">Linux</option>
-                                <option value="Other">Diğer</option>
-                            </select>
-                            <input type="text" id="user-input" class="form-control" placeholder="Sorunuzu yazın...">
-                            <button id="send-button" class="btn btn-primary">
-                                <i class="fas fa-paper-plane"></i> Gönder
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<div class="chat-container">
+    <div id="chat-messages" class="chat-messages"></div>
+    
+    <div class="chat-input-area">
+        <div class="input-group">
+            <select id="category" class="form-select" style="max-width: 150px;">
+                <option value="Hardware">Donanım</option>
+                <option value="Software">Yazılım</option>
+                <option value="Network">Ağ</option>
+                <option value="Other">Diğer</option>
+            </select>
+            
+            <select id="os" class="form-select" style="max-width: 150px;">
+                <option value="Windows">Windows</option>
+                <option value="MacOS">MacOS</option>
+                <option value="Linux">Linux</option>
+                <option value="Other">Diğer</option>
+            </select>
+            
+            <input type="text" id="user-input" class="form-control" placeholder="Sorunuzu yazın...">
+            
+            <button id="send-button" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i> Gönder
+            </button>
         </div>
     </div>
 </div>
 
 @section Styles {
     <style>
-        .chat-message {
-            margin-bottom: 15px;
-            padding: 10px;
-            border-radius: 10px;
+        .chat-container {
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
         }
 
-        .user-message {
-            background-color: #e3f2fd;
-            margin-left: 20%;
-            margin-right: 5px;
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
         }
 
-        .ai-message {
-            background-color: #f5f5f5;
-            margin-right: 20%;
-            margin-left: 5px;
-            white-space: pre-line;
-        }
-
-        .system-message {
-            background-color: #fff3cd;
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-        }
-
-        .typing-indicator {
-            padding: 10px;
-            background-color: #f5f5f5;
-            border-radius: 10px;
-            margin-right: 20%;
-            margin-left: 5px;
-            display: none;
-        }
-
-        .solution-feedback {
-            margin-top: 10px;
-            padding-top: 10px;
+        .chat-input-area {
+            padding: 20px;
+            background: white;
             border-top: 1px solid #dee2e6;
         }
 
-        .emoji-section {
-            font-weight: bold;
-            color: #0d6efd;
-            margin-top: 10px;
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 80%;
         }
 
-        .solution-step {
-            margin: 5px 0;
-            padding: 5px 0;
-        }
-
-        .feedback-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .feedback-button {
-            padding: 5px 15px;
-            border-radius: 20px;
-            border: 1px solid #dee2e6;
-            background: white;
-            transition: all 0.3s;
-        }
-
-        .feedback-button:hover {
-            background: #e9ecef;
-        }
-
-        .feedback-button.selected {
-            background: #0d6efd;
+        .user-message {
+            background: #007bff;
             color: white;
-            border-color: #0d6efd;
+            margin-left: auto;
         }
 
-        .solution-container {
-            margin: 15px 0;
-            padding: 15px;
+        .ai-message {
+            background: white;
             border: 1px solid #dee2e6;
-            border-radius: 8px;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        .solution-content {
-            margin-bottom: 10px;
-            white-space: pre-line;
-            line-height: 1.6;
-        }
-
-        .vote-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 6px 12px;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 14px;
-        }
-
-        .vote-button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .vote-button.upvote {
-            background-color: rgba(40, 167, 69, 0.1);
-            color: #28a745;
-        }
-
-        .vote-button.downvote {
-            background-color: rgba(220, 53, 69, 0.1);
-            color: #dc3545;
-        }
-
-        .vote-button.upvote:hover:not(:disabled) {
-            background-color: rgba(40, 167, 69, 0.2);
-        }
-
-        .vote-button.downvote:hover:not(:disabled) {
-            background-color: rgba(220, 53, 69, 0.2);
-        }
-
-        .vote-button.active {
-            font-weight: bold;
-        }
-
-        .vote-count {
-            font-weight: 500;
-            min-width: 20px;
-            text-align: center;
+        .typing-indicator {
+            color: #6c757d;
+            font-style: italic;
         }
     </style>
 }
 
 @section Scripts {
     <script>
+        let lastUserMessage = '';
+
         $(document).ready(function () {
             const chatMessages = $('#chat-messages');
             const userInput = $('#user-input');
             const sendButton = $('#send-button');
             const category = $('#category');
             const os = $('#os');
-            let lastUserMessage = '';
 
-            // Debug için
-            console.log('Elements:', {
-                chatMessages: chatMessages.length,
-                userInput: userInput.length,
-                sendButton: sendButton.length,
-                category: category.length,
-                os: os.length
+            const welcomeMessage = "Merhaba! 👋 Size nasıl yardımcı olabilirim?";
+            addMessage(welcomeMessage, false);
+
+            // Gönder butonu click event'i
+            sendButton.on('click', function() {
+                console.log('Send button clicked');
+                sendMessage();
+            });
+
+            // Enter tuşu event'i
+            userInput.on('keypress', function(e) {
+                if (e.which === 13) {
+                    console.log('Enter key pressed');
+                    sendMessage();
+                }
             });
 
             async function sendMessage(isRetry = false) {
-                const message = isRetry ? lastUserMessage : userInput.val().trim();
+                const message = userInput.val().trim();
                 if (!message) return;
 
-                console.log('Sending message:', message); // Debug için
+                console.log('Sending message:', message);
+                lastUserMessage = message;
 
                 if (!isRetry) {
-                    lastUserMessage = message;
                     addMessage(message, true);
                     userInput.val('');
                 }
@@ -226,36 +130,105 @@
                         })
                     });
 
-                    console.log('AI Response:', response); // Debug için
-
+                    console.log('AI Response:', response);
                     indicator.remove();
 
                     if (response.success) {
                         const messageId = Date.now();
                         addMessage(response.response, false, messageId);
                     } else {
-                        addMessage('Üzgünüm, bir hata oluştu: ' + response.message);
+                        addMessage('Üzgünüm, bir hata oluştu: ' + response.message, false);
                     }
                 } catch (error) {
-                    console.error('Error:', error); // Debug için
+                    console.error('Error:', error);
                     indicator.remove();
-                    addMessage('Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.');
+                    addMessage('Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.', false);
                 }
             }
 
-            // Click event handler
-            sendButton.on('click', function() {
-                console.log('Send button clicked'); // Debug için
-                sendMessage();
+            function addMessage(message, isUser, messageId = null) {
+                const messageDiv = $('<div></div>')
+                    .addClass('message')
+                    .addClass(isUser ? 'user-message' : 'ai-message');
+
+                if (!isUser && !messageId) {
+                    messageDiv.text(message);
+                } else {
+                    messageDiv.html(isUser ? message : formatAIResponse(message, messageId));
+                }
+
+                chatMessages.append(messageDiv);
+                chatMessages.scrollTop(chatMessages[0].scrollHeight);
+            }
+
+            function showTypingIndicator() {
+                const indicator = $('<div class="message ai-message typing-indicator">AI yanıt yazıyor...</div>');
+                chatMessages.append(indicator);
+                chatMessages.scrollTop(chatMessages[0].scrollHeight);
+                return indicator;
+            }
+
+            // Vote butonları için event delegation
+            $(document).on('click', '.vote-button', async function(e) {
+                e.preventDefault();
+                
+                const clickedButton = $(this);
+                const container = clickedButton.closest('.solution-container');
+                const messageId = container.data('message-id');
+                const solutionIndex = container.data('solution-index');
+                const isUpvote = clickedButton.hasClass('upvote');
+                
+                await handleVote(clickedButton, messageId, solutionIndex, isUpvote);
             });
 
-            // Enter key event handler
-            userInput.on('keypress', function(e) {
-                if (e.which === 13) {
-                    console.log('Enter key pressed'); // Debug için
-                    sendMessage();
+            async function handleVote(clickedButton, messageId, solutionIndex, isUpvote) {
+                try {
+                    clickedButton.prop('disabled', true);
+                    
+                    const container = clickedButton.closest('.solution-container');
+                    const solutionText = container.find('.solution-content').text().trim();
+                    const category = $('#category').val();
+                    const operatingSystem = $('#os').val();
+
+                    const voteData = {
+                        messageId: messageId.toString(),
+                        solutionIndex: solutionIndex,
+                        isUpvote: isUpvote,
+                        problemDescription: lastUserMessage,
+                        category: category,
+                        operatingSystem: operatingSystem,
+                        solutionText: solutionText
+                    };
+
+                    console.log('Vote Data:', voteData);
+
+                    const response = await $.ajax({
+                        url: '@Url.Action("SaveVote", "Chat")',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(voteData)
+                    });
+
+                    console.log('Vote Response:', response);
+
+                    if (response.success) {
+                        toastr.success(response.message);
+                        
+                        container.find('.upvote .vote-count').text(response.upvotes);
+                        container.find('.downvote .vote-count').text(response.downvotes);
+
+                        container.find('.vote-button').removeClass('active');
+                        clickedButton.addClass('active');
+                    } else {
+                        toastr.error(response.message || 'Oy verme işlemi başarısız oldu.');
+                    }
+                } catch (error) {
+                    console.error('Vote error:', error);
+                    toastr.error('Bir hata oluştu. Lütfen tekrar deneyin.');
+                } finally {
+                    clickedButton.prop('disabled', false);
                 }
-            });
+            }
 
             function formatAIResponse(response, messageId) {
                 const sections = response.split(/🔍|📝|⚠️/);
@@ -274,21 +247,22 @@
                     formattedHtml += `<div class="solutions-section">
                         <div class="emoji-section">📝 ÇÖZÜM ÖNERİLERİ</div>`;
                     
-                    // ### ile ayrılmış çözümleri bul
-                    const solutions = sections[2].split('###').map(s => s.trim()).filter(s => s);
+                    const solutions = sections[2].split('###').filter(s => s.trim());
                     
                     solutions.forEach((solution, index) => {
-                        if (solution) {
+                        if (solution.trim()) {
                             formattedHtml += `
-                            <div class="solution-container" id="solution-${messageId}-${index}">
-                                <div class="solution-content">${solution}</div>
+                            <div class="solution-container" id="solution-${messageId}-${index}" 
+                                 data-message-id="${messageId}" 
+                                 data-solution-index="${index}">
+                                <div class="solution-content">${solution.trim()}</div>
                                 <div class="solution-feedback">
                                     <div class="vote-buttons-container">
-                                        <button class="vote-button upvote" onclick="voteSolution('${messageId}', ${index}, true)" title="Bu çözüm işe yaradı">
+                                        <button type="button" class="vote-button upvote">
                                             <i class="fas fa-arrow-up"></i>
                                             <span class="vote-count" id="upvote-${messageId}-${index}">0</span>
                                         </button>
-                                        <button class="vote-button downvote" onclick="voteSolution('${messageId}', ${index}, false)" title="Bu çözüm işe yaramadı">
+                                        <button type="button" class="vote-button downvote">
                                             <i class="fas fa-arrow-down"></i>
                                             <span class="vote-count" id="downvote-${messageId}-${index}">0</span>
                                         </button>
@@ -311,119 +285,6 @@
 
                 return formattedHtml;
             }
-
-            function addMessage(message, isUser = false, messageId = null) {
-                const messageDiv = $('<div>')
-                    .addClass('chat-message')
-                    .addClass(isUser ? 'user-message' : 'ai-message');
-
-                if (isUser) {
-                    messageDiv.text(message);
-                } else {
-                    messageDiv.html(formatAIResponse(message, messageId));
-                }
-
-                chatMessages.append(messageDiv);
-                chatMessages.scrollTop(chatMessages[0].scrollHeight);
-            }
-
-            function showTypingIndicator() {
-                const indicator = $('<div>')
-                    .addClass('typing-indicator')
-                    .text('AI yazıyor...');
-                chatMessages.append(indicator);
-                indicator.show();
-                chatMessages.scrollTop(chatMessages[0].scrollHeight);
-                return indicator;
-            }
-
-            // Geri bildirim fonksiyonu
-            async function provideFeedback(messageId, solutionIndex, isSuccessful) {
-                try {
-                    const response = await $.ajax({
-                        url: '@Url.Action("SaveFeedback", "Chat")',
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({
-                            messageId: messageId,
-                            solutionIndex: solutionIndex,
-                            isSuccessful: isSuccessful,
-                            problemDescription: lastUserMessage,
-                            category: $('#category').val(),
-                            operatingSystem: $('#os').val()
-                        })
-                    });
-
-                    if (response.success) {
-                        // Tüm butonları devre dışı bırak
-                        $(`#solution-${messageId}-${solutionIndex} .feedback-button`).prop('disabled', true);
-                        
-                        // Seçilen çözümü vurgula
-                        if (isSuccessful) {
-                            $(`#solution-${messageId}-${solutionIndex}`).addClass('successful-solution');
-                            // Diğer çözümleri gizle veya soldur
-                            $(`.solution-container:not(#solution-${messageId}-${solutionIndex})`).addClass('faded-solution');
-                        }
-                    }
-                } catch (error) {
-                    console.error('Feedback error:', error);
-                }
-            }
-
-            async function voteSolution(messageId, solutionIndex, isUpvote) {
-                try {
-                    console.log('Voting:', { messageId, solutionIndex, isUpvote }); // Debug için
-
-                    const button = $(`#solution-${messageId}-${solutionIndex} .vote-button.${isUpvote ? 'upvote' : 'downvote'}`);
-                    
-                    // Butonu devre dışı bırak
-                    button.prop('disabled', true);
-
-                    const response = await $.ajax({
-                        url: '@Url.Action("SaveVote", "Chat")',
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({
-                            messageId: messageId,
-                            solutionIndex: solutionIndex,
-                            isUpvote: isUpvote
-                        })
-                    });
-
-                    console.log('Vote response:', response); // Debug için
-
-                    if (response.success) {
-                        // Toastr bildirimi göster
-                        toastr.success(isUpvote ? 'Teşekkürler! Bu çözümü faydalı buldunuz.' : 'Teşekkürler! Geri bildiriminiz alındı.');
-
-                        // Oy sayısını güncelle
-                        const voteCountElement = $(`#${isUpvote ? 'upvote' : 'downvote'}-${messageId}-${solutionIndex}`);
-                        const currentCount = parseInt(voteCountElement.text() || '0');
-                        voteCountElement.text(currentCount + 1);
-
-                        // Butonu aktif et ve stil uygula
-                        button.addClass('active');
-                    } else {
-                        toastr.warning(response.message || 'Oy verme işlemi başarısız oldu.');
-                    }
-                } catch (error) {
-                    console.error('Vote error:', error);
-                    toastr.error('Bir hata oluştu. Lütfen tekrar deneyin.');
-                } finally {
-                    // Butonu tekrar aktif et
-                    button.prop('disabled', false);
-                }
-            }
-
-            // Debug için log ekleyelim
-            $(document).ajaxError(function(event, jqXHR, ajaxSettings, thrownError) {
-                console.log('Ajax Error:', {
-                    status: jqXHR.status,
-                    statusText: jqXHR.statusText,
-                    responseText: jqXHR.responseText,
-                    error: thrownError
-                });
-            });
         });
     </script>
 } 

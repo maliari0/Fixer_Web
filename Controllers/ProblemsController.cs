@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Fixer_Common.Models.Dto;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace Fixer_Web.Controllers
 {
@@ -15,15 +16,18 @@ namespace Fixer_Web.Controllers
         private readonly IUnitOfWork _unitOfWork;
         private readonly IAIService _aiService;
         private readonly IMapper _mapper;
+        private readonly ILogger<ProblemsController> _logger;
 
         public ProblemsController(
             IUnitOfWork unitOfWork,
             IAIService aiService,
-            IMapper mapper)
+            IMapper mapper,
+            ILogger<ProblemsController> logger)
         {
             _unitOfWork = unitOfWork;
             _aiService = aiService;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<IActionResult> Index()
@@ -50,35 +54,37 @@ namespace Fixer_Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(ProblemCreateViewModel model)
+        public async Task<IActionResult> Create(CreateProblemDto model)
         {
-            if (!ModelState.IsValid)
-                return View(model);
-
             try
             {
-                // Create problem
-                var problem = _mapper.Map<Problem>(model);
+                // Önce Problem'i oluştur
+                var problem = new Problem
+                {
+                    Description = model.Description,
+                    Category = model.Category,
+                    OperatingSystem = model.OperatingSystem,
+                    CreatedAt = DateTime.UtcNow
+                };
+
                 await _unitOfWork.Problems.AddAsync(problem);
                 await _unitOfWork.SaveChangesAsync();
 
-                // Generate AI solution
-                var aiRequest = new AIRequestDto
+                // AI'dan çözüm al
+                var aiSolution = await _aiService.GenerateSolutionAsync(new AIRequestDto
                 {
                     ProblemDescription = model.Description,
                     Category = model.Category,
                     OperatingSystem = model.OperatingSystem
-                };
+                });
 
-                var aiSolution = await _aiService.GenerateSolutionAsync(aiRequest);
-
-                // Save AI solution
+                // Solution'ı Problem'e bağla
                 var solution = new Solution
                 {
-                    ProblemDescription = model.Description,
+                    ProblemId = problem.Id, // Problem ile ilişkilendir
+                    SolutionText = aiSolution,
                     Category = model.Category,
                     OperatingSystem = model.OperatingSystem,
-                    SolutionText = aiSolution,
                     SuccessCount = 0,
                     TotalUsageCount = 1,
                     CreatedAt = DateTime.UtcNow,
@@ -88,14 +94,14 @@ namespace Fixer_Web.Controllers
                 await _unitOfWork.Solutions.AddAsync(solution);
                 await _unitOfWork.SaveChangesAsync();
 
-                // Başarı mesajını TempData'ya ekleyelim
-                TempData["SuccessMessage"] = "Sorun başarıyla oluşturuldu!";
-                
+                _logger.LogInformation($"Created problem and solution. ProblemId: {problem.Id}, SolutionId: {solution.Id}");
+
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError("", "Bir hata oluştu: " + ex.Message);
+                _logger.LogError(ex, "Error creating problem and solution");
+                ModelState.AddModelError("", "Sorun oluşturulurken bir hata meydana geldi.");
                 return View(model);
             }
         }

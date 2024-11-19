@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Linq;
+using System.Collections.Generic;
+using System.IO;
+using Newtonsoft.Json;
 
 namespace Fixer_Web.Controllers
 {
@@ -52,59 +55,129 @@ namespace Fixer_Web.Controllers
         {
             try
             {
-                _logger.LogInformation($"Received vote request: {JsonSerializer.Serialize(vote)}");
+                _logger.LogInformation($"Vote data received: {JsonConvert.SerializeObject(vote)}");
 
-                var existingVote = await _unitOfWork.Votes.FindOneAsync(v => 
-                    v.SolutionId == vote.SolutionIndex);
-
-                if (existingVote != null)
+                if (vote == null)
                 {
-                    if (existingVote.IsUpvote == vote.IsUpvote)
+                    _logger.LogError("Vote DTO is null after deserialization");
+                    return Json(new { success = false, message = "Geçersiz istek: Vote verisi okunamadı" });
+                }
+
+                // Önce aynı çözüm metni ile daha önce kaydedilmiş bir solution var mı kontrol et
+                var existingSolution = await _unitOfWork.Solutions
+                    .GetFirstOrDefaultAsync(s => 
+                        s.SolutionText == vote.SolutionText && 
+                        s.Category == vote.Category &&
+                        s.OperatingSystem == vote.OperatingSystem);
+
+                Solution solution;
+
+                if (existingSolution != null)
+                {
+                    // Var olan solution'ı güncelle
+                    _logger.LogInformation($"Updating existing solution with ID: {existingSolution.Id}");
+                    
+                    existingSolution.LastUsedAt = DateTime.UtcNow;
+                    existingSolution.TotalUsageCount++;
+                    
+                    if (vote.IsUpvote)
                     {
-                        return Json(new { success = false, message = "Bu çözüm için zaten oy kullanmışsınız." });
+                        existingSolution.SuccessCount++;
                     }
 
-                    existingVote.IsUpvote = vote.IsUpvote;
-                    _unitOfWork.Votes.Update(existingVote);
+                    await _unitOfWork.Solutions.UpdateAsync(existingSolution);
+                    solution = existingSolution;
                 }
                 else
                 {
-                    var newVote = new Vote
+                    // Önce Problem kaydı oluştur
+                    var problem = new Problem
                     {
-                        SolutionId = vote.SolutionIndex,
-                        IsUpvote = vote.IsUpvote,
+                        Description = vote.ProblemDescription,
+                        Category = vote.Category ?? "Genel",
+                        OperatingSystem = vote.OperatingSystem ?? "Diğer",
                         CreatedAt = DateTime.UtcNow
                     };
 
-                    await _unitOfWork.Votes.AddAsync(newVote);
+                    await _unitOfWork.Problems.AddAsync(problem);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    _logger.LogInformation($"Created problem with ID: {problem.Id}");
+
+                    // Problem'den referans alarak Solution kaydı oluştur
+                    solution = new Solution
+                    {
+                        ProblemId = problem.Id,
+                        ProblemDescription = problem.Description,  // Problem'den al
+                        Category = problem.Category,              // Problem'den al
+                        OperatingSystem = problem.OperatingSystem, // Problem'den al
+                        SolutionText = vote.SolutionText,
+                        SuccessCount = vote.IsUpvote ? 1 : 0,
+                        TotalUsageCount = 1,
+                        CreatedAt = DateTime.UtcNow,
+                        LastUsedAt = DateTime.UtcNow
+                    };
+
+                    await _unitOfWork.Solutions.AddAsync(solution);
                 }
 
                 await _unitOfWork.SaveChangesAsync();
 
-                var voteCounts = await GetVoteCountsAsync(vote.SolutionIndex);
+                // Vote kaydı oluştur
+                var newVote = new Vote
+                {
+                    SolutionId = solution.Id,
+                    IsUpvote = vote.IsUpvote,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Votes.AddAsync(newVote);
+                await _unitOfWork.SaveChangesAsync();
+
+                // Güncel oy sayılarını al
+                var (upvotes, downvotes) = await GetVoteCountsAsync(solution.Id);
 
                 return Json(new { 
                     success = true, 
-                    message = vote.IsUpvote ? "Teşekkürler! Çözümü beğendiniz." : "Teşekkürler! Geri bildiriminiz alındı.",
-                    upvotes = voteCounts.upvotes,
-                    downvotes = voteCounts.downvotes
+                    message = vote.IsUpvote 
+                        ? "Teşekkürler! Bu çözümü faydalı buldunuz." 
+                        : "Teşekkürler! Geri bildiriminiz alındı.",
+                    upvotes = upvotes,
+                    downvotes = downvotes
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving vote");
-                return Json(new { success = false, message = "Bir hata oluştu: " + ex.Message });
+                _logger.LogError(ex, "Error in SaveVote");
+                return Json(new { success = false, message = $"Bir hata oluştu: {ex.Message}" });
             }
         }
 
         private async Task<(int upvotes, int downvotes)> GetVoteCountsAsync(int solutionId)
         {
-            var votes = await _unitOfWork.Votes.FindListAsync(v => v.SolutionId == solutionId);
+            try
+            {
+                var votes = await _unitOfWork.Votes.FindListAsync(v => v.SolutionId == solutionId);
+                
+                if (votes == null)
+                {
+                    _logger.LogWarning($"No votes found for solution {solutionId}");
+                    return (0, 0);
+                }
 
-            return (
-                upvotes: votes.Count(v => v.IsUpvote),
-                downvotes: votes.Count(v => !v.IsUpvote)
-            );
+                var votesList = votes.ToList();
+                var upvotes = votesList.Count(v => v.IsUpvote);
+                var downvotes = votesList.Count(v => !v.IsUpvote);
+
+                _logger.LogInformation($"Vote counts for solution {solutionId}: Upvotes={upvotes}, Downvotes={downvotes}");
+                
+                return (upvotes, downvotes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting vote counts for solution {solutionId}");
+                return (0, 0);
+            }
         }
     }
 }
