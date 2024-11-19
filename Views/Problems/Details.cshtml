@@ -1,0 +1,55 @@
+@model ProblemDetailViewModel
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3>@Model.Title</h3>
+            <div>
+                <span class="badge bg-info">@Model.Category</span>
+                <span class="badge bg-secondary">@Model.Status</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <h5>Sorun Açıklaması</h5>
+            <p>@Model.Description</p>
+
+            <hr />
+
+            <h5>Çözümler</h5>
+            @if (Model.Solutions != null && Model.Solutions.Any())
+            {
+                foreach (var solution in Model.Solutions)
+                {
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    @if (solution.IsAIGenerated)
+                                    {
+                                        <span class="badge bg-primary">AI Çözümü</span>
+                                    }
+                                    <small class="text-muted">
+                                        Oluşturulma: @solution.CreatedDate.ToShortDateString()
+                                    </small>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success">Başarı Oranı: %@solution.SuccessRate</span>
+                                    <span class="badge bg-info">Oy: @solution.VoteCount</span>
+                                </div>
+                            </div>
+                            <p class="mt-3">@solution.Content</p>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <p>Henüz çözüm eklenmemiş.</p>
+            }
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <a asp-action="Index" class="btn btn-secondary">Geri Dön</a>
+    </div>
+</div> 

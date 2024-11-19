@@ -1,0 +1,47 @@
+@using Fixer_Web.Models.ViewModels
+@model ProblemCreateViewModel
+
+<div class="container mt-4">
+    <h2>Yeni Sorun Ekle</h2>
+
+    <form asp-action="Create" method="post">
+        <div class="mb-3">
+            <label asp-for="Title" class="form-label">Başlık</label>
+            <input asp-for="Title" class="form-control" />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label">Sorun Açıklaması</label>
+            <textarea asp-for="Description" class="form-control" rows="5"></textarea>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Category" class="form-label">Kategori</label>
+            <select asp-for="Category" class="form-select">
+                <option value="">Seçiniz...</option>
+                <option value="Hardware">Donanım</option>
+                <option value="Software">Yazılım</option>
+                <option value="Network">Ağ</option>
+                <option value="Other">Diğer</option>
+            </select>
+            <span asp-validation-for="Category" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="OperatingSystem" class="form-label">İşletim Sistemi</label>
+            <select asp-for="OperatingSystem" class="form-select">
+                <option value="">Seçiniz...</option>
+                <option value="Windows">Windows</option>
+                <option value="MacOS">MacOS</option>
+                <option value="Linux">Linux</option>
+                <option value="Other">Diğer</option>
+            </select>
+            <span asp-validation-for="OperatingSystem" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+        <a asp-action="Index" class="btn btn-secondary">İptal</a>
+    </form>
+</div> 
